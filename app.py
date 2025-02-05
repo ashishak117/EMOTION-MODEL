@@ -8,7 +8,7 @@ import io
 app = Flask(__name__)
 
 # Load the trained model
-model = tf.keras.models.load_model("FLASK\emotion_detection_model_ver2.h5")  # Ensure the model file is in the same directory
+model = tf.keras.models.load_model("emotion_detection_model_ver2.h5")  # Ensure the model file is in the same directory
 
 # Define class labels
 EMOTIONS = ["Angry", "Disgust", "Fear", "Happy", "Neutral", "Sad", "Surprise"]

@@ -4,6 +4,9 @@ import numpy as np
 import cv2
 from PIL import Image
 import io
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
 
 app = Flask(__name__)
 
@@ -34,4 +37,5 @@ def predict():
     return jsonify({"emotion": predicted_emotion})
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000, debug=True)
+

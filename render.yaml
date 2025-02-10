@@ -1,0 +1,10 @@
+services:
+  - name: emotion-detection-api
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python app.py"
+    region: oregon
+    plan: free
+    envVars:
+      - key: PORT
+        value: 5000

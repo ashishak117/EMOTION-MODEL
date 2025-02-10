@@ -8,6 +8,7 @@ import io
 
 # 🔹 Disable GPU (Fix CUDA Errors on Render)
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+tf.config.set_visible_devices([], "GPU")  # Ensures TensorFlow does not use GPU
 
 # 🔹 Initialize Flask App
 app = Flask(__name__)
@@ -25,8 +26,8 @@ except Exception as e:
 EMOTIONS = ["Angry", "Disgust", "Fear", "Happy", "Neutral", "Sad", "Surprise"]
 
 # 🔹 Preprocessing Function
-def preprocess_image(file):
-    img = cv2.imdecode(np.frombuffer(file.read(), np.uint8), cv2.IMREAD_GRAYSCALE)  # Convert to grayscale
+def preprocess_image(img):
+    img = cv2.imdecode(np.frombuffer(img.read(), np.uint8), cv2.IMREAD_GRAYSCALE)  # Convert to grayscale
     img = cv2.resize(img, (48, 48))  # Resize to match model input size
     img = img / 255.0  # Normalize
     img = np.expand_dims(img, axis=0)  # Add batch dimension

@@ -3,7 +3,6 @@ import numpy as np
 import tensorflow as tf
 from flask import Flask, request, jsonify
 from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing import image
 import cv2
 import io
 
@@ -26,8 +25,8 @@ except Exception as e:
 EMOTIONS = ["Angry", "Disgust", "Fear", "Happy", "Neutral", "Sad", "Surprise"]
 
 # 🔹 Preprocessing Function
-def preprocess_image(img):
-    img = cv2.imdecode(np.frombuffer(img.read(), np.uint8), cv2.IMREAD_GRAYSCALE)  # Convert to grayscale
+def preprocess_image(file):
+    img = cv2.imdecode(np.frombuffer(file.read(), np.uint8), cv2.IMREAD_GRAYSCALE)  # Convert to grayscale
     img = cv2.resize(img, (48, 48))  # Resize to match model input size
     img = img / 255.0  # Normalize
     img = np.expand_dims(img, axis=0)  # Add batch dimension

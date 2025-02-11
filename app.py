@@ -1,22 +1,42 @@
 import os
-from flask import Flask, request, jsonify
-import tensorflow as tf
 import numpy as np
-import cv2
+import tensorflow as tf
+from flask import Flask, request, jsonify
+from tensorflow.keras.models import load_model
 from PIL import Image
 import io
+import cv2
+
+# Disable GPU (to avoid CUDA errors on Render)
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+tf.config.set_visible_devices([], "GPU")
 
 app = Flask(__name__)
 
-# Load the trained model
-model_path = "emotion_detection_model_ver2.h5"
-if os.path.exists(model_path):
-    model = tf.keras.models.load_model(model_path)
-else:
-    raise FileNotFoundError(f"Model file {model_path} not found!")
+# Ensure the model file exists
+MODEL_PATH = "emotion_detection_model_ver2.h5"
+if not os.path.exists(MODEL_PATH):
+    raise FileNotFoundError(f"Model file {MODEL_PATH} not found!")
 
-# Emotion Labels
+try:
+    model = load_model(MODEL_PATH)
+    print("✅ Model loaded successfully!")
+except Exception as e:
+    print(f"❌ Error loading model: {e}")
+
+# Emotion Labels (make sure these match your model’s outputs)
 EMOTIONS = ["Angry", "Disgust", "Fear", "Happy", "Neutral", "Sad", "Surprise"]
+
+# Preprocessing function
+def preprocess_image(file_obj):
+    # Read and convert image to grayscale
+    image = Image.open(io.BytesIO(file_obj.read())).convert("L")
+    # Resize image to 48x48 (or whatever your model expects)
+    image = image.resize((48, 48))
+    image = np.array(image) / 255.0  # Normalize
+    # Add batch and channel dimensions: shape becomes (1, 48, 48, 1)
+    image = np.expand_dims(image, axis=[0, -1])
+    return image
 
 @app.route("/")
 def home():
@@ -28,19 +48,17 @@ def predict():
         return jsonify({"error": "No file uploaded"}), 400
 
     file = request.files["file"]
-    image = Image.open(io.BytesIO(file.read()))
-    
-    image = np.array(image.convert("L").resize((48, 48)))  # Convert to grayscale & resize
-    image = image / 255.0  # Normalize
-    image = np.expand_dims(image, axis=[0, -1])  # Add batch & channel dimensions
 
-    predictions = model.predict(image)
-    emotion_index = np.argmax(predictions)
-    predicted_emotion = EMOTIONS[emotion_index]
+    try:
+        processed_img = preprocess_image(file)
+        predictions = model.predict(processed_img)
+        emotion_index = np.argmax(predictions)
+        emotion_label = EMOTIONS[emotion_index]
+        return jsonify({"emotion": emotion_label})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    return jsonify({"emotion": predicted_emotion})
-
-# Run Flask app on Railway-assigned port
 if __name__ == "__main__":
+    # Use the port provided by the environment (Render sets PORT)
     port = int(os.getenv("PORT", 5000))
     app.run(host="0.0.0.0", port=port)

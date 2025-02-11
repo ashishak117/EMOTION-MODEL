@@ -2,11 +2,11 @@ import os
 import numpy as np
 import tensorflow as tf
 from flask import Flask, request, jsonify
-from tensorflow.keras.models import load_model
 import cv2
 import io
+from PIL import Image
 
-# 🔹 Disable GPU (Fix CUDA Errors on Render)
+# 🔹 Disable GPU to avoid CUDA errors on Render
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 tf.config.set_visible_devices([], "GPU")  # Ensures TensorFlow does not use GPU
 
@@ -14,27 +14,26 @@ tf.config.set_visible_devices([], "GPU")  # Ensures TensorFlow does not use GPU
 app = Flask(__name__)
 
 # 🔹 Load Emotion Detection Model
-MODEL_PATH = "emotion_detection_model_ver2.h5"
+MODEL_PATH = "emotion_detection_model_ver2.h5"  # Ensure this file is in the root directory
 
 try:
-    model = load_model(MODEL_PATH)
+    model = tf.keras.models.load_model(MODEL_PATH)
     print("✅ Model loaded successfully!")
 except Exception as e:
     print(f"❌ Error loading model: {e}")
 
-# 🔹 Emotion Labels (Ensure these match your trained model's output)
+# 🔹 Emotion Labels
 EMOTIONS = ["Angry", "Disgust", "Fear", "Happy", "Neutral", "Sad", "Surprise"]
 
 # 🔹 Preprocessing Function
-def preprocess_image(img):
-    img = cv2.imdecode(np.frombuffer(img.read(), np.uint8), cv2.IMREAD_GRAYSCALE)  # Convert to grayscale
-    img = cv2.resize(img, (48, 48))  # Resize to match model input size
-    img = img / 255.0  # Normalize
-    img = np.expand_dims(img, axis=0)  # Add batch dimension
-    img = np.expand_dims(img, axis=-1)  # Add channel dimension
-    return img
+def preprocess_image(image_file):
+    image = Image.open(io.BytesIO(image_file.read()))
+    image = image.convert("L").resize((48, 48))  # Convert to grayscale & resize
+    image = np.array(image) / 255.0  # Normalize
+    image = np.expand_dims(image, axis=[0, -1])  # Add batch & channel dimensions
+    return image
 
-# 🔹 Define API Route for Emotion Detection
+# 🔹 API Route for Emotion Detection
 @app.route("/predict", methods=["POST"])
 def predict():
     if "file" not in request.files:
@@ -44,9 +43,9 @@ def predict():
 
     try:
         processed_img = preprocess_image(file)
-        prediction = model.predict(processed_img)
-        emotion_index = np.argmax(prediction)  # Get the index of the highest prediction
-        emotion_label = EMOTIONS[emotion_index]  # Map to emotion name
+        predictions = model.predict(processed_img)
+        emotion_index = np.argmax(predictions)  # Get the index of the highest prediction
+        emotion_label = EMOTIONS[emotion_index]  # Get emotion name
 
         return jsonify({"emotion": emotion_label})  # Return predicted emotion
 

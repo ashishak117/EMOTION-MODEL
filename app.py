@@ -1,58 +1,46 @@
 import os
-import numpy as np
-import tensorflow as tf
 from flask import Flask, request, jsonify
-from tensorflow.keras.models import load_model
+import tensorflow as tf
+import numpy as np
+import cv2
 from PIL import Image
 import io
 
-# 🔹 Force CPU for compatibility & performance
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-
-# 🔹 Initialize Flask App
 app = Flask(__name__)
 
-# 🔹 Load Model
-MODEL_PATH = "emotion_detection_model_ver2.h5"
+# Load the trained model
+model_path = "emotion_detection_model_ver2.h5"
+if os.path.exists(model_path):
+    model = tf.keras.models.load_model(model_path)
+else:
+    raise FileNotFoundError(f"Model file {model_path} not found!")
 
-if not os.path.exists(MODEL_PATH):
-    raise FileNotFoundError("❌ Model file NOT FOUND! Make sure 'emotion_detection_model_ver2.h5' is uploaded.")
-
-try:
-    model = load_model(MODEL_PATH)
-    print("✅ Model loaded successfully!")
-except Exception as e:
-    print(f"❌ Error loading model: {e}")
-
-# 🔹 Emotion Labels
+# Emotion Labels
 EMOTIONS = ["Angry", "Disgust", "Fear", "Happy", "Neutral", "Sad", "Surprise"]
 
-# 🔹 Preprocessing Function
-def preprocess_image(img):
-    img = Image.open(io.BytesIO(img.read())).convert("L")  # Convert to grayscale
-    img = img.resize((48, 48))  # Resize to match model input size
-    img = np.array(img) / 255.0  # Normalize
-    img = np.expand_dims(img, axis=[0, -1])  # Add batch & channel dimensions
-    return img
+@app.route("/")
+def home():
+    return "✅ Emotion Detection API is running!"
 
-# 🔹 API Route
 @app.route("/predict", methods=["POST"])
 def predict():
     if "file" not in request.files:
         return jsonify({"error": "No file uploaded"}), 400
 
     file = request.files["file"]
-    try:
-        processed_img = preprocess_image(file)
-        prediction = model.predict(processed_img)
-        emotion_index = np.argmax(prediction)
-        emotion_label = EMOTIONS[emotion_index]
+    image = Image.open(io.BytesIO(file.read()))
+    
+    image = np.array(image.convert("L").resize((48, 48)))  # Convert to grayscale & resize
+    image = image / 255.0  # Normalize
+    image = np.expand_dims(image, axis=[0, -1])  # Add batch & channel dimensions
 
-        return jsonify({"emotion": emotion_label})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    predictions = model.predict(image)
+    emotion_index = np.argmax(predictions)
+    predicted_emotion = EMOTIONS[emotion_index]
 
-# 🔹 Ensure Render Binds to the Correct Port
+    return jsonify({"emotion": predicted_emotion})
+
+# Run Flask app on Railway-assigned port
 if __name__ == "__main__":
-    PORT = int(os.getenv("PORT", 5000))
-    app.run(host="0.0.0.0", port=PORT, debug=True)
+    port = int(os.getenv("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)

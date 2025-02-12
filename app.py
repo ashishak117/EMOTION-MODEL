@@ -14,7 +14,7 @@ tf.config.set_visible_devices([], "GPU")
 app = Flask(__name__)
 
 # Ensure the model file exists
-MODEL_PATH = "emotion_detection_model_ver2.h5"
+MODEL_PATH = "face_model.h5"
 if not os.path.exists(MODEL_PATH):
     raise FileNotFoundError(f"Model file {MODEL_PATH} not found!")
 
